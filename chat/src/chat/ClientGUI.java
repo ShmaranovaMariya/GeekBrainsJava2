@@ -4,6 +4,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler {
 
@@ -25,6 +30,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JButton buttonSend = new JButton("Send");
 
     private final JList<String> listUsers = new JList<>();
+    private SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
 
 
@@ -71,6 +77,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         add(panelBottom, BorderLayout.SOUTH);
 
         cbAlwaysOnTop.addActionListener(this);
+        buttonSend.addActionListener(this); // добавление действий для кнопки Send
+        messageField.addActionListener(this); //добавление действий для кнопки Enter
 
         setVisible(true);
     }
@@ -81,6 +89,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         Object src = e.getSource();
         if (src == cbAlwaysOnTop) {
             setAlwaysOnTop(cbAlwaysOnTop.isSelected());
+        } else if (src == buttonSend || src == messageField) {    //уточнение действия для кнопок Send & Enter - отправить сообщение в чат
+            sendMessage(loginField.getText(), messageField.getText());
         } else {
             throw new RuntimeException("Unsupported action: " + src);
         }
@@ -93,5 +103,27 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         String msg = String.format("Exception in \"%s\": %s %s%n\t %s",
                 t.getName(), e.getClass().getCanonicalName(), e.getMessage(), ste[0]);
         JOptionPane.showMessageDialog(this, msg, "Exception!", JOptionPane.ERROR_MESSAGE);
+    }
+
+    public void sendMessage(String user, String msg) {
+        if (msg.isEmpty()) { //если поле сообщения пустое, то в чат ничего не отправляется
+            return;
+        }
+        String messageToChat = String.format("%s <%s>: %s%n", sdf.format(Calendar.getInstance().getTime()), user, msg); // сообщение в формате: Дата, логин, сообщение
+        chatArea.append(messageToChat); //обновляется значение на : Сообщение в чате
+        messageField.setText(""); //поле сообщений получает текст
+        messageField.grabFocus(); //поле для написания сообщений в фокусе пользователя
+        putIntoFileHistory(user, messageToChat); //записать сообщение в историю
+    }
+
+    private void putIntoFileHistory(String user, String msg) { //поместить сообщение в файл истории
+        try (PrintWriter pw = new PrintWriter(new FileOutputStream(user + "-history.txt", true))) {
+            pw.print(msg);
+        } catch (FileNotFoundException e) {
+            showError(msg);
+        }
+    }
+
+    private void showError(String msg) {
     }
 }
